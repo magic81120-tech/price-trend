@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Delong 304 CR price trend</title>
+    <!-- 1. 使用GitHub Pages兼容的高可用ECharts CDN（增加备用地址） -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        // 备用CDN加载容错（防止主CDN失效）
+        if (typeof echarts === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        /* 2. 样式完全隔离（避免GitHub Pages默认样式冲突） */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            background-color: #fff;
+            padding: 10px;
+        }
+        /* 3. 响应式图表容器（适配移动端+桌面端） */
+        #priceChart {
+            width: 100%;
+            height: calc(100vh - 40px); /* 占满可视区域（排除padding） */
+            min-height: 400px; /* 移动端最小高度 */
+            max-height: 800px; /* 桌面端最大高度 */
+            margin: 0 auto;
+            border: 1px solid #e1e4e8; /* GitHub风格边框 */
+            border-radius: 6px; /* 贴合GitHub视觉风格 */
+            padding: 15px;
+            background-color: #fff;
+        }
+        /* 4. 加载提示样式 */
+        .chart-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- 图表容器 + 加载提示 -->
+    <div id="priceChart">
+        <div class="chart-loading">Loading price chart...</div>
+    </div>
+
+    <script>
+        // 5. 增强DOM加载容错 + 异步初始化
+        window.addEventListener('DOMContentLoaded', async function() {
+            // 等待ECharts完全加载
+            await new Promise(resolve => {
+                const checkEcharts = setInterval(() => {
+                    if (typeof echarts !== 'undefined') {
+                        clearInterval(checkEcharts);
+                        resolve();
+                    }
+                }, 100);
+                // 超时兜底（5秒）
+                setTimeout(() => clearInterval(checkEcharts), 5000);
+            });
+
+            // 获取图表容器
+            const chartDom = document.getElementById('priceChart');
+            if (!chartDom) {
+                console.error('Chart container not found!');
+                alert('Failed to load chart: container not found');
+                return;
+            }
+
+            // 移除加载提示
+            chartDom.querySelector('.chart-loading')?.remove();
+
+            // 6. 初始化ECharts（适配暗色/亮色模式）
+            const myChart = echarts.init(chartDom, null, {
+                renderer: 'canvas', // 优先canvas渲染（兼容性更好）
+                useDirtyRect: false // 关闭脏矩形优化（避免GitHub Pages渲染异常）
+            });
+
+            // 7. 数据长度校验（防止图表渲染失败）
+            const dateData = [
+                '25.2.5', '25.2.6', '25.2.7', '25.2.8', '25.2.10', '25.2.11', '25.2.12', '25.2.13', '25.2.14', '25.2.17',
+                '25.2.18', '25.2.19', '25.2.20', '25.2.21', '25.2.24', '25.2.25', '25.2.26', '25.2.27', '25.2.28', '25.3.3',
+                '25.3.4', '25.3.5', '25.3.6', '25.3.7', '25.3.10', '25.3.11', '25.3.12', '25.3.13', '25.3.14', '25.3.17',
+                '25.3.18', '25.3.19', '25.3.20', '25.3.21', '25.3.24', '25.3.25', '25.3.26', '25.3.27', '25.3.28', '25.3.31',
+                '25.4.1', '25.4.2', '25.4.3', '25.4.7', '25.4.8', '25.4.9', '25.4.10', '25.4.11', '25.4.14', '25.4.15',
+                '25.4.16', '25.4.17', '25.4.18', '25.4.21', '25.4.22', '25.4.23', '25.4.24', '25.4.25', '25.4.27', '25.4.28',
+                '25.4.29', '25.4.30', '25.5.6', '25.5.7', '25.5.8', '25.5.9', '25.5.12', '25.5.13', '25.5.14', '25.5.15',
+                '25.5.16', '25.5.19', '25.5.20', '25.5.21', '25.5.22', '25.5.23', '25.5.26', '25.5.27', '25.5.28', '25.5.29',
+                '25.5.30', '25.6.3', '25.6.4', '25.6.5', '25.6.6', '25.6.9', '25.6.10', '25.6.11', '25.6.12', '25.6.13',
+                '25.6.16', '25.6.17', '25.6.18', '25.6.19', '25.6.20', '25.6.23', '25.6.24', '25.6.25', '25.6.26', '25.6.27',
+                '25.6.30', '25.7.1', '25.7.2', '25.7.3', '25.7.4', '25.7.7', '25.7.8', '25.7.9', '25.7.10', '25.7.11',
+                '25.7.14', '25.7.15', '25.7.16', '25.7.17', '25.7.18', '25.7.21', '25.7.22', '25.7.23', '25.7.24', '25.7.25',
+                '25.7.28', '25.7.29', '25.7.30', '25.7.31', '25.8.1', '25.8.4', '25.8.5', '25.8.6', '25.8.7', '25.8.8',
+                '25.8.11', '25.8.12', '25.8.13', '25.8.14', '25.8.15', '25.8.18', '25.8.19', '25.8.20', '25.8.21', '25.8.22',
+                '25.8.25', '25.8.26', '25.8.27', '25.8.28', '25.8.29', '25.9.1', '25.9.2', '25.9.3', '25.9.4', '25.9.5',
+                '25.9.8', '25.9.9', '25.9.10', '25.9.11', '25.9.12', '25.9.15', '25.9.16', '25.9.17', '25.9.18', '25.9.19',
+                '25.9.22', '25.9.23', '25.9.24', '25.9.25', '25.9.26', '25.9.28', '25.9.29', '25.9.30', '25.10.9', '25.10.10',
+                '25.10.11', '25.10.13', '25.10.14', '25.10.15', '25.10.16', '25.10.17', '25.10.20', '25.10.21', '25.10.22', '25.10.23',
+                '25.10.24', '25.10.27', '25.10.28', '25.10.29', '25.10.30', '25.10.31', '25.11.3', '25.11.4', '25.11.5', '25.11.6',
+                '25.11.7', '25.11.10', '25.11.11', '25.11.12', '25.11.13', '25.11.14', '25.11.17', '25.11.18', '25.11.19', '25.11.20',
+                '25.11.21', '25.11.24', '25.11.25', '25.11.26', '25.11.27', '25.11.28', '25.12.1', '25.12.2', '25.12.3', '25.12.4',
+                '25.12.5', '25.12.8', '25.12.9', '25.12.10', '25.12.11', '25.12.12', '25.12.15', '25.12.16', '25.12.17', '25.12.18',
+                '25.12.19', '25.12.22', '25.12.23', '25.12.24', '25.12.25', '25.12.26', '25.12.29', '25.12.30', '25.12.31', '26.1.4',
+                '26.1.5', '26.1.6', '26.1.7', '26.1.8', '26.1.9', '26.1.12', '26.1.13', '26.1.14', '26.1.15', '26.1.16',
+                '26.1.19', '26.1.20', '26.1.21', '26.1.22', '26.1.23', '26.1.26', '26.1.27', '26.1.28', '26.1.29', '26.1.30',
+                '26.2.2', '26.2.3','26.2.4'
+            ];
+            
+            const priceData = [
+                13100, 13100, 13100, 13100, 13100, 13050, 12950, 13000, 12950, 12950,
+                12900, 12900, 13000, 13050, 13050, 13000, 13000, 13050, 13050, 13100,
+                13100, 13100, 13250, 13250, 13250, 13300, 13350, 13400, 13500, 13550,
+                13450, 13400, 13400, 13400, 13350, 13350, 13400, 13450, 13550, 13550,
+                13600, 13600, 13550, 13350, 13200, 13050, 13050, 13000, 13050, 13050,
+                13050, 13050, 13050, 13000, 13000, 13000, 13000, 12950, 12950, 12950,
+                12950, 12950, 12950, 12950, 12950, 12950, 13050, 13100, 13200, 13150,
+                13150, 13100, 13050, 13050, 13050, 13050, 13050, 13050, 13000, 12950,
+                12950, 12950, 12950, 12950, 12950, 12900, 12800, 12800, 12800, 12800,
+                12800, 12700, 12700, 12700, 12600, 12550, 12500, 12550, 12600, 12600,
+                12600, 12550, 12600, 12600, 12600, 12600, 12600, 12600, 12650, 12650,
+                12650, 12650, 12650, 12650, 12700, 12850, 12850, 12850, 12850, 12900,
+                12850, 12850, 12900, 12850, 12850, 12900, 12900, 12900, 12950, 12950,
+                13100, 13100, 13100, 13050, 13000, 13000, 13000, 12950, 12900, 12900,
+                13000, 13000, 13000, 13000, 13000, 13100, 13150, 13100, 13100, 13050,
+                13050, 13050, 13050, 13050, 13050, 13200, 13200, 13100, 13100, 13100,
+                13100, 13100, 13100, 13100, 13050, 13050, 13050, 13050, 13050, 13050,
+                12950, 12900, 12850, 12850, 12850, 12850, 12850, 12900, 12900, 12900,
+                12950, 12950, 12900, 12900, 12900, 12850, 12800, 12800, 12700, 12700,
+                12700, 12700, 12650, 12600, 12600, 12550, 12550, 12550, 12500, 12500,
+                12500, 12450, 12500, 12550, 12550, 12500, 12550, 12550, 12550, 12550,
+                12600, 12650, 12650, 12650, 12700, 12700, 12600, 12500, 12550, 12550,
+                12650, 12750, 12800, 12950, 12900, 12900, 12900, 13000, 13100, 13100,
+                13100, 13250, 13800, 13500, 13700, 13700, 13750, 13800, 14200, 14150,
+                14050, 14200, 14350, 14350, 14350, 14450, 14300, 14250, 14350, 14200,
+                14150, 13900, 13900
+            ];
+
+            // 校验数据长度一致性（关键容错）
+            if (dateData.length !== priceData.length) {
+                console.error(`Data length mismatch! Date: ${dateData.length}, Price: ${priceData.length}`);
+                myChart.setOption({
+                    title: { text: 'Data Error: Length Mismatch' },
+                    tooltip: { trigger: 'none' },
+                    xAxis: { type: 'category', data: ['Error'] },
+                    yAxis: { type: 'value' },
+                    series: [{ type: 'line', data: [0] }]
+                });
+                return;
+            }
+
+            // 计算要显示的日期索引
+            const totalLen = dateData.length;
+            const showIndexes = [0, Math.floor(totalLen/4), Math.floor(totalLen/2), Math.floor(totalLen*3/4), totalLen-1];
+
+            // 8. 优化ECharts配置（适配GitHub Pages渲染）
+            const option = {
+                title: {
+                    text: 'Delong 304 CR price trend',
+                    left: 'center',
+                    textStyle: { fontSize: 16, fontWeight: 600 }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: (params) => `${params[0].name}<br/>${params[0].value} CNY/TON`,
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    textStyle: { color: '#fff' },
+                    borderRadius: 4,
+                    padding: 8,
+                    triggerOn: 'mousemove|click' // 增强tooltip触发稳定性
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dateData,
+                    name: 'DATE',
+                    // 【关键修改1】X轴名称：加深颜色+强制100%不透明度
+                    nameTextStyle: { 
+                        color: '#d32f2f', 
+                        fontWeight: 600, 
+                        fontSize: 14,
+                        opacity: 1 // 强制100%不透明度
+                    },
+                    nameLocation: 'end',
+                    nameGap: 10,
+                    // 【关键修改2】X轴标签：加深颜色+强制100%不透明度
+                    axisLabel: {
+                        rotate: 0,
+                        fontSize: 12,
+                        interval: (index) => showIndexes.includes(index),
+                        margin: 8,
+                        align: 'center',
+                        color: '#333', // 从浅灰改为深灰，提升视觉深度
+                        opacity: 1 // 强制100%不透明度
+                    },
+                    // 【关键修改3】X轴刻度：新增深色+强制100%不透明度
+                    axisTick: {
+                        alignWithLabel: true,
+                        interval: (index) => showIndexes.includes(index),
+                        lineStyle: {
+                            color: '#666', // 刻度线设为深灰色
+                            opacity: 1 // 强制100%不透明度
+                        }
+                    },
+                    // 【关键修改4】X轴轴线：加深颜色+强制100%不透明度
+                    axisLine: { 
+                        lineStyle: {
+                            color: '#333', // 从浅灰#e1e4e8改为深灰#333
+                            opacity: 1 // 强制100%不透明度
+                        } 
+                    },
+                    splitLine: { show: false }
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 12000,
+                    max: 14500,
+                    name: 'CNY/TON',
+                    // 【关键修改5】Y轴名称：加深颜色+强制100%不透明度
+                    nameTextStyle: {
+                        color: '#d32f2f',
+                        fontWeight: 600,
+                        fontSize: 14,
+                        opacity: 1 // 强制100%不透明度
+                    },
+                    nameLocation: 'end',
+                    nameGap: 20,
+                    nameRotate: 0,
+                    // 【关键修改6】Y轴标签：加深颜色+强制100%不透明度
+                    axisLabel: {
+                        fontSize: 12,
+                        color: '#333', // 从默认浅灰改为深灰
+                        opacity: 1 // 强制100%不透明度
+                    },
+                    // 【关键修改7】Y轴轴线：加深颜色+强制100%不透明度
+                    axisLine: { 
+                        lineStyle: {
+                            color: '#333', // 从浅灰#e1e4e8改为深灰#333
+                            opacity: 1 // 强制100%不透明度
+                        } 
+                    },
+                    // 【关键修改8】Y轴刻度：新增深色+强制100%不透明度
+                    axisTick: {
+                        lineStyle: {
+                            color: '#666', // 刻度线设为深灰色
+                            opacity: 1 // 强制100%不透明度
+                        }
+                    },
+                    // 【关键修改9】Y轴网格线：适度加深（可选，提升可读性）
+                    splitLine: { 
+                        lineStyle: {
+                            color: '#ccc', // 从浅灰#f6f8fa改为中灰#ccc
+                            opacity: 1 // 强制100%不透明度
+                        } 
+                    }
+                },
+                series: [{
+                    name: 'Price',
+                    type: 'line',
+                    data: priceData,
+                    lineStyle: { color: '#d32f2f', width: 2 },
+                    symbol: 'none',
+                    smooth: true,
+                    emphasis: { focus: 'series' } // 鼠标悬浮优化
+                }],
+                grid: {
+                    left: '6%',
+                    right: '8%',
+                    bottom: '12%',
+                    top: '12%',
+                    containLabel: true
+                },
+                animation: true, // 启用动画（提升体验）
+                animationDuration: 1000 // 动画时长（适配GitHub Pages加载速度）
+            };
+
+            // 渲染图表
+            myChart.setOption(option);
+
+            // 9. 增强窗口自适应 + 内存释放
+            window.addEventListener('resize', () => {
+                myChart.resize({
+                    animation: { duration: 300 } // resize动画（更流畅）
+                });
+            });
+
+            // 页面卸载时释放资源（防止内存泄漏）
+            window.addEventListener('beforeunload', () => {
+                myChart.dispose();
+            });
+
+            // 10. 错误监听（便于排查GitHub Pages问题）
+            myChart.on('error', (err) => {
+                console.error('ECharts error:', err);
+                alert('Chart rendering error: ' + err.message);
+            });
+        });
+    </script>
+</body>
+</html>
